@@ -29,6 +29,7 @@ class Index:
     def __init__(self, limit, years = DEFAULT_YEARS):
         self.years = years
         self.limit = limit
+        print "***IN INDEX*** limit = %i" % limit
         self.spark = SparkSession.builder.getOrCreate()
 
     def retrieveForYear(self, year):

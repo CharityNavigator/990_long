@@ -31,5 +31,5 @@ for a in sys.argv:
 
 i = index.Index(limit)
 res = i.load()
-print len(res)
+print res.count()
 print "Done"
