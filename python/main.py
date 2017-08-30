@@ -19,8 +19,17 @@
 # THE SOFTWARE.
 
 import index
+import sys
 
-# Get list of index files.
+for a in sys.argv:
+    if a == "--production":
+        print "Running in PRODUCTION mode. All 990s will be processed!"
+        limit = -1
+    else:
+        print "Running in TEST mode. Limited to ten 990s per tax year."
+        limit = 10
 
-# Iterate over each index file.
-
+i = index.Index(limit)
+res = i.load()
+print len(res)
+print "Done"

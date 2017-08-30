@@ -19,18 +19,38 @@
 # THE SOFTWARE.
 
 from pyspark import SparkContext
-from datetime import datetime
-import os
+from pyspark.sql import SparkSession
 import json
-import boto
-from boto.s3.key import Key
+import requests
+
+DEFAULT_YEARS = range(2011, 2018)
 
 class Index:
-    def __init__(self, years, limit):
+    def __init__(self, limit, years = DEFAULT_YEARS):
         self.years = years
         self.limit = limit
+        self.spark = SparkSession.builder.getOrCreate()
 
     def retrieveForYear(self, year):
-        s3 = boto.connect_s3(host="s3.amazonaws.com")
-        bucket = s3.get_bucket("irs-form-990")
+        url  = "https://s3.amazonaws.com/irs-form-990/index_%i.json" % year
+        r = requests.get(url)
+        j = json.loads(r.text)
+      
+        # The index comes back as a single JSON key-value pair whose value is
+        # a JSON array of length one. Inside _that_ is an array of filings.
 
+        filings = j.values()[0]
+
+        if self.limit != -1:
+            sample = filings[0:self.limit]
+        else:
+            sample = filings
+
+        return self.spark.createDataFrame(sample)
+
+    def load(self):
+        #SO 42540335
+        dataframes = map(lambda r: self.retrieveForYear(r), self.years)
+        union = reduce(lambda df1, df2: df1.unionAll(df2), dataframes)
+
+        return union
