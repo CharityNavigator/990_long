@@ -25,12 +25,11 @@ import requests
 
 DEFAULT_YEARS = range(2011, 2018)
 
-class Index:
+class IndexLoader:
     def __init__(self, limit, years = DEFAULT_YEARS):
         self.years = years
         self.limit = limit
-        print "***IN INDEX*** limit = %i" % limit
-        self.spark = SparkSession.builder.getOrCreate()
+        self.sc = SparkSession.builder.getOrCreate().sparkContext
 
     def retrieveForYear(self, year):
         url  = "https://s3.amazonaws.com/irs-form-990/index_%i.json" % year
@@ -47,11 +46,8 @@ class Index:
         else:
             sample = filings
 
-        return self.spark.createDataFrame(sample)
+        return sample
 
     def load(self):
-        #SO 42540335
-        dataframes = map(lambda r: self.retrieveForYear(r), self.years)
-        union = reduce(lambda df1, df2: df1.unionAll(df2), dataframes)
-
-        return union
+        return self.sc.parallelize(self.years) #\
+                #.flatMap(lambda y : self.retrieveForYear(y))

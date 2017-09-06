@@ -18,7 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import index
+from index import IndexLoader
+from filing import FilingLoader
 import sys
 
 for a in sys.argv:
@@ -29,7 +30,13 @@ for a in sys.argv:
         print "Running in TEST mode. Limited to ten 990s per tax year."
         limit = 10
 
-i = index.Index(limit)
-res = i.load()
-print res.count()
-print "Done"
+iLoader = IndexLoader(limit)
+index = iLoader.load()
+print "****************************************"
+df = index \
+        .map(lambda r : Row(**r)) \
+        .toDF()
+
+df.printSchema()
+print "****************************************"
+df.show()
