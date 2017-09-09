@@ -39,7 +39,11 @@ def retrieveForYear(year):
     # a JSON array of length one. Inside _that_ is an array of filings.
 
     filings = j.values()[0]
+<<<<<<< HEAD
     sample = filings[0:1000]
+=======
+    sample = filings[0:10]
+>>>>>>> 113f4c3391a4923e1f023d6b08c6045fb8dfc015
     return sample
 
 def extractElements(root, template):
@@ -112,7 +116,10 @@ standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
 filings = filings.withColumn("xpath", standardize(filings.xpath))
 #filings.select("xpath").show(20, False)
 filings.createOrReplaceTempView("filings")
+<<<<<<< HEAD
 
+=======
+>>>>>>> 113f4c3391a4923e1f023d6b08c6045fb8dfc015
 query = """
 	SELECT 
           f.*, 
@@ -127,9 +134,15 @@ query = """
 	WHERE f.version = c.VERSION
 	AND f.xpath = c.XPATH
 	"""
+<<<<<<< HEAD
 path = "990_long/%s" % timestamp
 spark.sql(query) \
         .write.partitionBy("version") \
         .csv("990_long/%s" % timestamp)
 
 print "Done."
+=======
+spark.sql(query) \
+        .write.partitionBy("version") \
+        .csv(timestamp, header = True)
+>>>>>>> 113f4c3391a4923e1f023d6b08c6045fb8dfc015
