@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import Row
+from pyspark.sql.types import StringType
+from pyspark.sql.functions import udf
 from lxml import etree
 import json
 import requests
@@ -33,7 +35,7 @@ def retrieveForYear(year):
     # a JSON array of length one. Inside _that_ is an array of filings.
 
     filings = j.values()[0]
-    sample = filings[0:100]
+    sample = filings[0:10]
     return sample
 
 def extractElements(root, template):
@@ -63,11 +65,63 @@ def parse(filing):
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
 
-sc.parallelize(years) \
+#root
+# |-- VAR_NAME: string (nullable = true)
+# |-- FORM: string (nullable = true)
+# |-- PART: string (nullable = true)
+# |-- TABLE: string (nullable = true)
+# |-- SCOPE: string (nullable = true)
+# |-- PRODUCTION_RULE: string (nullable = true)
+# |-- FULL_NAME: string (nullable = true)
+# |-- DESCRIPTION: string (nullable = true)
+# |-- LOCATION: string (nullable = true)
+# |-- XPATH: string (nullable = true)
+# |-- VERSION: string (nullable = true)
+# |-- REQUIRED: string (nullable = true)
+# |-- NOTES: string (nullable = true)
+# |-- FLAG: string (nullable = true)
+# |-- ANALYST: string (nullable = true)
+# |-- LAST_UPDATED: string (nullable = true)
+cc = spark.read.csv("concordance_long.csv", header=True)
+cc.createOrReplaceTempView("concordance")
+
+
+# root
+# |-- DLN: string (nullable = true)
+# |-- EIN: string (nullable = true)
+# |-- FormType: string (nullable = true)
+# |-- LastUpdated: string (nullable = true)
+# |-- ObjectId: string (nullable = true)
+# |-- OrganizationName: string (nullable = true)
+# |-- SubmittedOn: string (nullable = true)
+# |-- TaxPeriod: string (nullable = true)
+# |-- URL: string (nullable = true)
+# |-- value: string (nullable = true)
+# |-- version: string (nullable = true)
+# |-- xpath: string (nullable = true)
+filings = sc.parallelize(years) \
         .flatMap(lambda y : retrieveForYear(y)) \
         .flatMap(lambda f : parse(f)) \
         .map(lambda r : Row(**r)) \
-        .toDF() \
-        .write.format("com.databricks.spark.csv")\
-        .option("header", "true")\
-        .save(timestamp)
+        .toDF()
+standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
+filings = filings.withColumn("xpath", standardize(filings.xpath))
+#filings.select("xpath").show(20, False)
+filings.createOrReplaceTempView("filings")
+query = """
+	SELECT 
+          f.*, 
+          c.VAR_NAME as variable, 
+          c.FORM as form,
+          c.PART as part,
+          c.SCOPE as scope,
+          c.LOCATION as location,
+          c.ANALYST as analyst
+        FROM filings f
+	LEFT JOIN concordance c
+	WHERE f.version = c.VERSION
+	AND f.xpath = c.XPATH
+	"""
+spark.sql(query) \
+        .write.partitionBy("version") \
+        .csv(timestamp, header = True)
