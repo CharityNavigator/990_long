@@ -1,5 +1,8 @@
+import boto
 from pyspark.sql import SparkSession
 from pyspark.sql.types import Row
+from pyspark.sql.types import StringType
+from pyspark.sql.functions import udf
 from lxml import etree
 import json
 import requests
@@ -8,7 +11,7 @@ import time
 import datetime
 
 timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
-years = [2011, 2012]
+years = range(2011, 2018)
 
 def traverse(tree, node, elements):
     for child in node: 
@@ -25,15 +28,18 @@ def doTraverse(tree, node):
     return elements
 
 def retrieveForYear(year):
-    url  = "https://s3.amazonaws.com/irs-form-990/index_%i.json" % year
-    r = requests.get(url)
-    j = json.loads(r.text)
+    r = boto.connect_s3(host="s3.amazonaws.com") \
+            .get_bucket("irs-form-990") \
+            .get_key("index_%i.json" % year) \
+            .get_contents_as_string() \
+            .replace("\r", "")
+    j = json.loads(r)
   
     # The index comes back as a single JSON key-value pair whose value is
     # a JSON array of length one. Inside _that_ is an array of filings.
 
     filings = j.values()[0]
-    sample = filings[0:100]
+    sample = filings[0:1000]
     return sample
 
 def extractElements(root, template):
@@ -63,11 +69,67 @@ def parse(filing):
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
 
-sc.parallelize(years) \
+#root
+# |-- VAR_NAME: string (nullable = true)
+# |-- FORM: string (nullable = true)
+# |-- PART: string (nullable = true)
+# |-- TABLE: string (nullable = true)
+# |-- SCOPE: string (nullable = true)
+# |-- PRODUCTION_RULE: string (nullable = true)
+# |-- FULL_NAME: string (nullable = true)
+# |-- DESCRIPTION: string (nullable = true)
+# |-- LOCATION: string (nullable = true)
+# |-- XPATH: string (nullable = true)
+# |-- VERSION: string (nullable = true)
+# |-- REQUIRED: string (nullable = true)
+# |-- NOTES: string (nullable = true)
+# |-- FLAG: string (nullable = true)
+# |-- ANALYST: string (nullable = true)
+# |-- LAST_UPDATED: string (nullable = true)
+cc = spark.read.csv("concordance_long.csv", header=True)
+cc.createOrReplaceTempView("concordance")
+
+
+# root
+# |-- DLN: string (nullable = true)
+# |-- EIN: string (nullable = true)
+# |-- FormType: string (nullable = true)
+# |-- LastUpdated: string (nullable = true)
+# |-- ObjectId: string (nullable = true)
+# |-- OrganizationName: string (nullable = true)
+# |-- SubmittedOn: string (nullable = true)
+# |-- TaxPeriod: string (nullable = true)
+# |-- URL: string (nullable = true)
+# |-- value: string (nullable = true)
+# |-- version: string (nullable = true)
+# |-- xpath: string (nullable = true)
+filings = sc.parallelize(years) \
         .flatMap(lambda y : retrieveForYear(y)) \
         .flatMap(lambda f : parse(f)) \
         .map(lambda r : Row(**r)) \
-        .toDF() \
-        .write.format("com.databricks.spark.csv")\
-        .option("header", "true")\
-        .save(timestamp)
+        .toDF()
+standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
+filings = filings.withColumn("xpath", standardize(filings.xpath))
+#filings.select("xpath").show(20, False)
+filings.createOrReplaceTempView("filings")
+
+query = """
+	SELECT 
+          f.*, 
+          c.VAR_NAME as variable, 
+          c.FORM as form,
+          c.PART as part,
+          c.SCOPE as scope,
+          c.LOCATION as location,
+          c.ANALYST as analyst
+        FROM filings f
+	LEFT JOIN concordance c
+	WHERE f.version = c.VERSION
+	AND f.xpath = c.XPATH
+	"""
+path = "990_long/%s" % timestamp
+spark.sql(query) \
+        .write.partitionBy("version") \
+        .csv("990_long/%s" % timestamp)
+
+print "Done."
