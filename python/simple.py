@@ -9,6 +9,9 @@ import requests
 import re
 import time
 import datetime
+import sys
+
+production = len(sys.argv) > 1 and sys.argv[1] == "--prod"
 
 timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
 years = range(2011, 2018)
@@ -39,8 +42,12 @@ def retrieveForYear(year):
     # a JSON array of length one. Inside _that_ is an array of filings.
 
     filings = j.values()[0]
-    sample = filings[0:1000]
-    return sample
+
+    if production:
+        return filings
+    else:
+        sample = filings[0:1000]
+        return sample
 
 def extractElements(root, template):
     tree = root.getroottree()
@@ -127,5 +134,6 @@ query = """
 	"""
 path = "990_long/%s" % timestamp
 spark.sql(query) \
-        .write.partitionBy("version") \
-        .csv("990_long/%s" % timestamp)
+        .repartition("variable") \
+        .write.partitionBy("variable") \
+        .parquet("s3a://dbb-cn-transfer/990_long/%s" % timestamp)
