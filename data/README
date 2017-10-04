@@ -1,0 +1,9 @@
+concordance_long.csv: Manually reprocessed version of draft concordance file
+from 5/2017 Aspen Institute Datathon. Once we finalize the format of the
+concordance (after the validation event in 11/2017), I will add code to pull
+and programatically reformat the latest concordance file.
+
+master_file.csv: Output from 990 metadata extraction code, available on Github:
+    https://github.com/CharityNavigator/990_metadata
+
+types.csv: Processed from master_file.csv using reprocess_master.R.

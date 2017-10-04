@@ -1,6 +1,17 @@
 # 990_long
 Generates a long-form version of every field in the IRS 990 eFile dataset based on the Nonprofit Open Data Collective (NOPDC) "Datathon" concordance. The concordance is the work of many separate groups that came together to make sense of the IRS Form 990 eFile dataset. An upcoming NOPDC website will have more information.
 
+# Bootstrap
+```
+sudo yum -y install tmux htop git
+git clone https://github.com/CharityNavigator/990_long
+cd 990_long/data
+hadoop fs -put concordance_long.csv
+hadoop fs -put types.csv
+cd ../python
+spark-submit simple.py
+```
+
 ## License
 
 *Copyright (c) 2017 Charity Navigator.*
