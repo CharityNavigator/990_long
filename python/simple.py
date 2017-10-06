@@ -118,20 +118,25 @@ filings = sc.parallelize(years) \
 standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
 filings = filings.withColumn("xpath", standardize(filings.xpath))
 filings.createOrReplaceTempView("filings")
+
+types = spark.read.csv("types.csv", header = True)
+types.createOrReplaceTempView("types")
 query = """
 	SELECT 
           f.*, 
           c.VAR_NAME as variable, 
+          t.Type as vartype,
           c.FORM as form,
           c.PART as part,
           c.SCOPE as scope,
           c.LOCATION as location,
           c.ANALYST as analyst
-        FROM filings f
-	LEFT JOIN concordance c
+        FROM filings f, concordance c, types t
 	WHERE f.version = c.VERSION
 	AND f.xpath = c.XPATH
+        AND f.xpath = t.Xpath
 	"""
+
 path = "990_long/%s" % timestamp
 spark.sql(query) \
         .repartition("variable") \
