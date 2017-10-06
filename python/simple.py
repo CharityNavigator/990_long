@@ -131,10 +131,12 @@ query = """
           c.SCOPE as scope,
           c.LOCATION as location,
           c.ANALYST as analyst
-        FROM filings f, concordance c, types t
-	WHERE f.version = c.VERSION
-	AND f.xpath = c.XPATH
-        AND f.xpath = t.Xpath
+        FROM filings f
+        LEFT JOIN concordance c
+	 ON f.version = c.VERSION
+	 AND f.xpath = c.XPATH
+        LEFT JOIN types t
+         ON f.xpath = t.Xpath
 	"""
 
 path = "990_long/%s" % timestamp
