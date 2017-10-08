@@ -16,18 +16,30 @@ production = len(sys.argv) > 1 and sys.argv[1] == "--prod"
 timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
 years = range(2011, 2018)
 
-def traverse(tree, node, elements):
+def purify(text):
+    if text == None:
+        return None
+    elif text.strip() == "":
+        return None
+    else:
+        return text.strip()
+
+def traverse(tree, node, elements, url):
     for child in node: 
         path = tree.getelementpath(child)
         path = re.sub("\{.*?\}", "", path)
         path = re.sub("\[.*?\]", "", path)
-        value = child.text
-        elements.append((path, value))
-        traverse(tree, child, elements)
+        value = purify(child.text)
+        if len(child) > 0 and value != None:
+            raise Exception("Path '%s' had %i children and text \"%s\" for URL: %s" % (path, len(child), child.text, url))
+        if len(child) > 0:
+            traverse(tree, child, elements, url)
+        if value != None:
+            elements.append((path, value))
 
-def doTraverse(tree, node):
+def doTraverse(tree, node, url):
     elements = []
-    traverse(tree, node, elements)
+    traverse(tree, node, elements, url)
     return elements
 
 def retrieveForYear(year):
@@ -49,9 +61,9 @@ def retrieveForYear(year):
         sample = filings[0:1000]
         return sample
 
-def extractElements(root, template):
+def extractElements(root, template, url):
     tree = root.getroottree()
-    elements = doTraverse(tree, root)
+    elements = doTraverse(tree, root, url)
     r = []
     for (xpath, value) in elements:
         c = template.copy()
@@ -71,7 +83,7 @@ def parse(filing):
     template = filing.copy()
     template["version"] = version
 
-    return extractElements(root, template)
+    return extractElements(root, template, filing["URL"])
 
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
@@ -139,8 +151,9 @@ query = """
          ON f.xpath = t.Xpath
 	"""
 
-path = "990_long/%s" % timestamp
 spark.sql(query) \
         .repartition("variable") \
         .write.partitionBy("variable") \
         .parquet("s3a://dbb-cn-transfer/990_long/%s" % timestamp)
+
+print "Process complete."
