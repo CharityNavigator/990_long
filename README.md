@@ -24,7 +24,7 @@ hadoop fs -put types.csv
 
 If I'm going to use this cluster to inspect the results of the job, I find it convenient to also install `htop` and `tmux`.
 
-If you have reason to believe that the concordance in this repository is not the latest version, also clone [the concordance repo](https://github.com/Nonprofit-Open-Data-Collective/irs-efile-master-concordance-file) and copy it over `990_long/data/concordance.csv`.
+If you have reason to believe that the concordance in this repository is not the latest version, also clone [the concordance repo](https://github.com/Nonprofit-Open-Data-Collective/irs-efile-master-concordance-file) and copy the concordance file itself over `990_long/data/concordance.csv`.
 
 Now run
 
