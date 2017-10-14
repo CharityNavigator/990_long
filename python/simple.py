@@ -89,25 +89,24 @@ spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
 
 #root
-# |-- VAR_NAME: string (nullable = true)
-# |-- FORM: string (nullable = true)
-# |-- PART: string (nullable = true)
-# |-- TABLE: string (nullable = true)
-# |-- SCOPE: string (nullable = true)
-# |-- PRODUCTION_RULE: string (nullable = true)
-# |-- FULL_NAME: string (nullable = true)
-# |-- DESCRIPTION: string (nullable = true)
-# |-- LOCATION: string (nullable = true)
-# |-- XPATH: string (nullable = true)
-# |-- VERSION: string (nullable = true)
-# |-- REQUIRED: string (nullable = true)
-# |-- NOTES: string (nullable = true)
-# |-- FLAG: string (nullable = true)
-# |-- ANALYST: string (nullable = true)
-# |-- LAST_UPDATED: string (nullable = true)
-cc = spark.read.csv("concordance_long.csv", header=True)
+# |-- variable_name: string (nullable = true)
+# |-- description: string (nullable = true)
+# |-- location_code: string (nullable = true)
+# |-- scope: string (nullable = true)
+# |-- form: string (nullable = true)
+# |-- part: string (nullable = true)
+# |-- rdb_table: string (nullable = true)
+# |-- production_rule: string (nullable = true)
+# |-- xpath: string (nullable = true)
+# |-- version: string (nullable = true)
+# |-- required: string (nullable = true)
+# |-- notes: string (nullable = true)
+# |-- location: string (nullable = true)
+# |-- flag: string (nullable = true)
+# |-- analyst: string (nullable = true)
+# |-- n: string (nullable = true)
+cc = spark.read.csv("concordance.csv", header=True)
 cc.createOrReplaceTempView("concordance")
-
 
 # root
 # |-- DLN: string (nullable = true)
@@ -135,25 +134,35 @@ types = spark.read.csv("types.csv", header = True)
 types.createOrReplaceTempView("types")
 query = """
 	SELECT 
-          f.*, 
-          c.VAR_NAME as variable, 
-          t.Type as vartype,
-          c.FORM as form,
-          c.PART as part,
-          c.SCOPE as scope,
-          c.LOCATION as location,
-          c.ANALYST as analyst
+	  f.DLN as dln,
+	  f.EIN as ein,
+	  f.FormType as form_type,
+	  f.LastUpdated as last_updated,
+	  f.ObjectId as object_id,
+	  f.OrganizationName as org_name,
+	  f.SubmittedOn as submitted_on,
+	  f.TaxPeriod as tax_period,
+	  f.URL as url,
+	  f.value as value,
+	  f.version as version,
+	  f.xpath as xpath,
+          c.variable_name as variable, 
+          t.type as vartype,
+          c.form as form,
+          c.part as part,
+          c.scope as scope,
+          c.location as location,
+          c.analyst as analyst
         FROM filings f
         LEFT JOIN concordance c
-	 ON f.version = c.VERSION
-	 AND f.xpath = c.XPATH
+	 ON f.xpath = c.xpath
         LEFT JOIN types t
-         ON f.xpath = t.Xpath
+         ON f.xpath = t.xpath
 	"""
 
 spark.sql(query) \
-        .repartition("variable") \
-        .write.partitionBy("variable") \
-        .parquet("s3a://dbb-cn-transfer/990_long/%s" % timestamp)
+        .repartition("form", "part") \
+        .write.partitionBy("form", "part") \
+        .parquet("s3a://cn-validatathon/test_20171013")
 
 print "Process complete."

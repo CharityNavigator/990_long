@@ -1,4 +1,4 @@
-Xpath,Type
+xpath,type
 /Return/ReturnData/AffiliatedGroupSchedule/AffiliatedSchedule/AddressUS/AddressLine1,StreetAddressType
 /Return/ReturnData/AffiliatedGroupSchedule/AffiliatedSchedule/AddressUS/AddressLine2,StreetAddressType
 /Return/ReturnData/AffiliatedGroupSchedule/AffiliatedSchedule/AddressUS/City,CityType
