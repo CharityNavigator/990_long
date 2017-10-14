@@ -87,7 +87,7 @@ TBLPROPERTIES (
   'transient_lastDdlTime'='1507989450')
 ```
 
-You're almost there. Follow [these steps] to access the data in RStudio. For the validatathon, we are creating one EC2 instance configured in this way, and then creating clones of it for each participant.
+You're almost there. Follow [these steps](https://aws.amazon.com/blogs/big-data/running-r-on-amazon-athena/) to access the data in RStudio. For the validatathon, we are creating one EC2 instance configured in this way, and then creating clones of it for each participant.
 
 ## License
 
