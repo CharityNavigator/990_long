@@ -11,7 +11,7 @@ It is most convenient to run this code from an IAM account that has access to EM
 
 To run the code:
 
-Create an EMR cluster configured for Spark applications. As a benchmark, a 3-machine cluster consisting of `m4.xlarge` machines can run the test data in about 5 minutes. The production data is around 350 times large as of 2017-10-14. So a 10-node cluster of `c4.8xlarge` should be enough to get it all done in an hour. (There are other factors at work--this is a ballpark.)
+Create an EMR cluster configured for Spark applications. As a benchmark, a 3-machine cluster consisting of `m4.xlarge` machines can run the test data in about 5 minutes. The production data is around 350 times larger as of 2017-10-14. So a 10-node cluster of `c4.8xlarge` should be enough to get it all done in an hour. (There are other factors at work--this is a ballpark.)
 
 Next, SSH into the master node and run the following code:
 
