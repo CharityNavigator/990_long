@@ -11,7 +11,7 @@ It is most convenient to run this code from an IAM account that has access to EM
 
 To run the code:
 
-Create an EMR cluster configured for Spark applications. As a benchmark, a 3-machine cluster consisting of `m4.xlarge` machines can run the test data in about 5 minutes. The production data is around 350 times large as of 2017-10-14. So a 10-node cluster of `c4.8xlarge` should be enough to get it all done in an hour. (There are other variables--this is a ballpark.)
+Create an EMR cluster configured for Spark applications. As a benchmark, a 3-machine cluster consisting of `m4.xlarge` machines can run the test data in about 5 minutes. The production data is around 350 times large as of 2017-10-14. So a 10-node cluster of `c4.8xlarge` should be enough to get it all done in an hour. (There are other factors at work--this is a ballpark.)
 
 Next, SSH into the master node and run the following code:
 
@@ -49,7 +49,7 @@ nohup sh -c "spark-submit simple.py > out 2> err" &
 
 Since you ran the job using `nohup`, it will keep running even if you log out of your machine.
 
-Once the application is finished running, you are ready to use the output. For the Validatathon, we will be intereacting with it using Amazon Athena. Go to the [Athena Console] and run the following query, changing `name_of_table` and `s3://my-bucket/path-to-parquet/` to their appropriate values. 
+Once the application is finished running, you are ready to use the output. For the Validatathon, we will be intereacting with it using Amazon Athena. Go to the [Athena Console](https://console.aws.amazon.com/athena/) and run the following query, changing `name_of_table` and `s3://my-bucket/path-to-parquet/` to their appropriate values. 
 
 Note that Athena will read *all* of the little files (partitions) that Spark created, so you give it the same path you gave Spark, except this time you'll use `s3://` instead of `s3a://`. 
 
