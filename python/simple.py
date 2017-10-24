@@ -89,22 +89,19 @@ spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
 
 #root
-# |-- variable_name: string (nullable = true)
-# |-- description: string (nullable = true)
-# |-- location_code: string (nullable = true)
-# |-- scope: string (nullable = true)
-# |-- form: string (nullable = true)
-# |-- part: string (nullable = true)
-# |-- rdb_table: string (nullable = true)
-# |-- production_rule: string (nullable = true)
-# |-- xpath: string (nullable = true)
-# |-- version: string (nullable = true)
-# |-- required: string (nullable = true)
-# |-- notes: string (nullable = true)
-# |-- location: string (nullable = true)
-# |-- flag: string (nullable = true)
-# |-- analyst: string (nullable = true)
-# |-- n: string (nullable = true)
+#*variable_name
+# description
+#*scope
+#*location_code
+#*form
+#*part
+#*data_type
+# required
+# cardinality
+# rdb_table
+# xpath,version
+# production_rule
+# last_version_modified
 cc = spark.read.csv("concordance.csv", header=True)
 cc.createOrReplaceTempView("concordance")
 
@@ -130,8 +127,8 @@ standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
 filings = filings.withColumn("xpath", standardize(filings.xpath))
 filings.createOrReplaceTempView("filings")
 
-types = spark.read.csv("types.csv", header = True)
-types.createOrReplaceTempView("types")
+#types = spark.read.csv("types.csv", header = True)
+#types.createOrReplaceTempView("types")
 query = """
 	SELECT 
 	  f.DLN as dln,
@@ -147,22 +144,22 @@ query = """
 	  f.version as version,
 	  f.xpath as xpath,
           c.variable_name as variable, 
-          t.type as vartype,
+          c.data_type as var_type,
           c.form as form,
           c.part as part,
           c.scope as scope,
-          c.location as location,
-          c.analyst as analyst
+          c.location_code as location
         FROM filings f
         LEFT JOIN concordance c
 	 ON f.xpath = c.xpath
-        LEFT JOIN types t
-         ON f.xpath = t.xpath
 	"""
 
+#spark.sql(query) \
+#        .repartition("form", "part") \
+#        .write.partitionBy("form", "part") \
+#        .parquet("s3a://cn-validatathon/test_20171013")
 spark.sql(query) \
-        .repartition("form", "part") \
-        .write.partitionBy("form", "part") \
-        .parquet("s3a://cn-validatathon/test_20171013")
+        .write \
+        .parquet("s3a://cn-validatathon/test_nopart_20171024")
 
 print "Process complete."
