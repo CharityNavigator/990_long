@@ -1,5 +1,3 @@
-## get_paths.py: retrieve a list of e-files to process.
-
 import argparse
 import boto
 from pyspark.sql import SparkSession
@@ -30,6 +28,8 @@ parser.add_argument("--timestamp", action="store_true", help="If true, append th
 parser.add_argument("--earliest-year", type=int, action="store", default=2011, help="First year to include in data.")
 args = parser.parse_args()
 
+production = args.prod
+
 if args.prod:
     LOGGER.info("Production mode is ON!")
 
@@ -41,14 +41,12 @@ else:
 
 outputPath = args.output + suffix
 
-### Retrieve list of filenames for each year.
-def getPaths(year):
+def retrieveForYear(year):
     r = boto.connect_s3(host="s3.amazonaws.com") \
             .get_bucket("irs-form-990") \
             .get_key("index_%i.json" % year) \
             .get_contents_as_string() \
             .replace("\r", "")
-
     j = json.loads(r)
   
     # The index comes back as a single JSON key-value pair whose value is
@@ -56,13 +54,12 @@ def getPaths(year):
 
     filings = j.values()[0]
 
-    if parser.prod:
-        LOGGER.info("Returning all 990s for year %i" % year)
+    if production:
         return filings
     else:
-        return filings[0:1000]
+        sample = filings[0:1000]
+        return sample
 
-### Retrieve list of years for which data is available.
 def getYears(first_year):
     year = first_year
     failed = False
@@ -79,16 +76,12 @@ def getYears(first_year):
 
     return years
 
-########
-# Main #
-########
-
 years = getYears(args.earliest_year)
-LOGGER.info("Years: %s" % str(years))
+
 sc.parallelize(years) \
-        .flatMap(lambda y : getPaths(y)) \
+        .flatMap(lambda y : retrieveForYear(y)) \
         .map(lambda r : Row(**r)) \
         .toDF() \
         .write.parquet(outputPath)
-LOGGER.info(outputPath)
-LOGGER.info("Process complete.")
+
+print "***Process complete."
