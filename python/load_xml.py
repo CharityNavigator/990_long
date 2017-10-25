@@ -21,8 +21,8 @@ LOGGER = log4jLogger.LogManager.getLogger(__name__)
 ### Handle command line arguments
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", action="store", help="Path to Parquet file containing URLs.")
-parser.add_argument("--output", action="store", required=True, help="Path in which to store result. Can be local or S3.")
+parser.add_argument("--input", action="store", help="Path to Parquet file containing URLs.", default = "990_long/paths")
+parser.add_argument("--output", action="store", required=True, help="Path in which to store result. Can be local or S3.", default="990_long/xml")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 args = parser.parse_args()
 
