@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", action="store", help="Path to Parquet file containing raw XML.", default="990_long/xml")
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="990_long/parsed")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
+parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for XML parsing.", default=500)
 args = parser.parse_args()
 
 if args.timestamp:
@@ -46,18 +47,18 @@ def traverse(tree, node, elements):
         path = re.sub("\[.*?\]", "", path)
         value = purify(child.text)
         if len(child) > 0:
-            traverse(tree, child, elements, url)
+            traverse(tree, child, elements)
         if value != None:
             elements.append((path, value))
 
 def doTraverse(tree, node):
     elements = []
-    traverse(tree, node, elements, url)
+    traverse(tree, node, elements)
     return elements
 
-def extractElements(root, version, url):
+def extractElements(root, version):
     tree = root.getroottree()
-    elements = doTraverse(tree, root, url)
+    elements = doTraverse(tree, root)
     r = []
     for (xpath, value) in elements:
         c = [version, xpath, value]
@@ -65,9 +66,13 @@ def extractElements(root, version, url):
     return r
 
 def parse(raw):
-    root = etree.XML(raw)
-    version = root.attrib["returnVersion"]
-    return extractElements(root, version)
+    try:
+        ascii = raw.encode("ascii", "ignore")
+        root = etree.XML(ascii)
+        version = root.attrib["returnVersion"]
+        return extractElements(root, version)
+    except:
+        return []
 
 schema = ArrayType(
         StructType([
@@ -80,7 +85,7 @@ schema = ArrayType(
 udfParse = udf(parse, schema)
 
 spark.read.parquet(args.input) \
-        .repartition(200) \
+        .repartition(args.partitions) \
         .withColumn("elementArr", udfParse("XML")) \
         .select(col("DLN").alias("dln"), 
                 col("EIN").alias("ein"), 
@@ -89,10 +94,11 @@ spark.read.parquet(args.input) \
                 col("SubmittedOn").alias("submitted_on"),
                 col("TaxPeriod").alias("period"),
                 col("URL").alias("url"),
-                explode(col("elementArr").alias("element"))) \
+                explode(col("elementArr")).alias("element")) \
         .withColumn("version", col("element.version")) \
         .withColumn("xpath", col("element.xpath")) \
         .withColumn("value", col("element.value")) \
+        .drop("element") \
         .write.parquet(outputPath)
 
 print "***Process complete."

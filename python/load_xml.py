@@ -24,6 +24,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", action="store", help="Path to Parquet file containing URLs.", default = "990_long/paths")
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="990_long/xml")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
+parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for data retrieval.", default=500)
+
 args = parser.parse_args()
 
 if args.timestamp:
@@ -42,7 +44,7 @@ def getXml(url):
 udfGetXml = udf(getXml, StringType())
 
 spark.read.parquet(args.input) \
-        .repartition(200) \
+        .repartition(args.partitions) \
         .withColumn("XML", udfGetXml("URL")) \
         .write.parquet(outputPath)
 
