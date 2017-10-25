@@ -23,11 +23,11 @@ parser.add_argument("--output", action="store", help="Path in which to store res
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 args = parser.parse_args()
 
-if args.timestamp == None:
-    suffix = ""
-else:
+if args.timestamp:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
     suffix = "/%s" % timestamp
+else:
+    suffix = ""
 
 outputPath = args.output + suffix
 

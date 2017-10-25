@@ -33,11 +33,11 @@ production = args.prod
 if args.prod:
     LOGGER.info("Production mode is ON!")
 
-if args.timestamp == None:
-    suffix = ""
-else:
+if args.timestamp:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
     suffix = "/%s" % timestamp
+else:
+    suffix = ""
 
 outputPath = args.output + suffix
 
