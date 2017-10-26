@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", action="store", help="Path to Parquet file containing xpath-value pairs.", default = "990_long/parsed")
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default = "s3a://cn-validatathon")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
+parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for the join.", default=400)
 args = parser.parse_args()
 
 if args.timestamp:
@@ -31,29 +32,20 @@ else:
 
 outputPath = args.output + suffix
 
-cc = spark.read.csv("concordance.csv", header=True)
-cc.createOrReplaceTempView("concordance")
+cc = spark.read.csv("concordance.csv", header=True) \
+        .select(col("xpath"),
+                col("variable_name").alias("variable"),
+                col("data_type").alias("var_type"),
+                col("form"),
+                col("part"),
+                col("scope"),
+                col("location_code").alias("location"))
 
 standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
-filings = spark.read.parquet(args.input) \
-        .withColumn("xpath", standardize(col("xpath")))
-filings.createOrReplaceTempView("filings")
+df = spark.read.parquet(args.input) \
+        .withColumn("xpath", standardize(col("xpath"))) \
+        .repartition(args.partitions)
 
-query = """
-    SELECT 
-      f.*,
-      c.variable_name as variable, 
-      c.data_type as var_type,
-      c.form as form,
-      c.part as part,
-      c.scope as scope,
-      c.location_code as location
-    FROM filings f
-    LEFT JOIN concordance c
-     ON f.xpath = c.xpath
-    """
-
-spark.sql(query) \
-        .repartition("form", "part") \
-        .write.partitionBy("form", "part") \
+df.join(cc, "xpath", "left") \
+        .write \
         .parquet(outputPath)
