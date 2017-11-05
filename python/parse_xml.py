@@ -7,6 +7,7 @@ import re
 import time
 import datetime
 import sys
+import signal
 
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
@@ -22,6 +23,7 @@ parser.add_argument("--input", action="store", help="Path to Parquet file contai
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="990_long/parsed")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for XML parsing.", default=500)
+parser.add_argument("--timeout", type=int, action="store", help="Number of seconds to spend parsing a single 990 eFile before it is skipped.", default=3)
 args = parser.parse_args()
 
 if args.timestamp:
@@ -65,13 +67,20 @@ def extractElements(root, version):
         r.append(c)
     return r
 
+def handler(signum, frame):
+    raise Exception()
+
 def parse(raw):
+    signal.signal(signal.SIGALRM, handler)
     try:
+        signal.alarm(args.timeout)
         ascii = raw.encode("ascii", "ignore")
         root = etree.XML(ascii)
         version = root.attrib["returnVersion"]
-        return extractElements(root, version)
-    except:
+        ret = extractElements(root, version)
+        signal.alarm(0)
+        return ret
+    except Exception:
         return []
 
 schema = ArrayType(
