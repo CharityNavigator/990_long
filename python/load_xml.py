@@ -1,15 +1,13 @@
 import argparse
 import boto
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StringType
-from pyspark.sql.functions import udf
-from lxml import etree
-import json
-import requests
-import re
+from pyspark.sql.types import *
+from pyspark.sql.types import Row       # Yes, this is necessary despite above
+from pyspark.sql.functions import *
 import time
 import datetime
 import sys
+import signal
 
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
@@ -37,15 +35,46 @@ else:
 outputPath = args.output + suffix
 
 def getXml(url):
-    r = requests.get(url)
+    signal.alarm(2)
+    try:
+        r = requests.get(url)
+    except:
+        return None
     raw = r.text.encode("ascii", "ignore")
     return raw
+
+def toS3(objId):
+    return objId + "_public.xml"
+
+def appendXml(row, conn):
+    contents = row.asDict()
+    s3name = toS3(contents["ObjectId"])
+    xml = conn.get_key(s3name) \
+            .get_contents_as_string() \
+            .replace("\r", "")
+    contents["xml"] = xml
+    return contents
+
+def getXmlForPartition(partition):
+    conn = boto.connect_s3(host="s3.amazonaws.com") \
+            .get_bucket("irs-form-990")
+
+    ret = []
+
+    for row in partition:
+        contents = appendXml(row, conn)
+        ret.append(contents)
+
+    return ret
 
 udfGetXml = udf(getXml, StringType())
 
 spark.read.parquet(args.input) \
+        .rdd \
         .repartition(args.partitions) \
-        .withColumn("XML", udfGetXml("URL")) \
+        .mapPartitions(lambda p: getXmlForPartition(p)) \
+        .map(lambda r: Row(**r)) \
+        .toDF() \
         .write.parquet(outputPath)
 
 print "***Process complete."
