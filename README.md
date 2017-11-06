@@ -138,7 +138,7 @@ nohup sh -c "spark-submit python/split_csv.py --input \"my/origin\" --output \"m
 tail -f split_csv.err
 ```
 
-Amazon Athena requires a bit more explanation, discussed in step 6.
+Amazon Athena requires a bit more explanation, discussed in step 7.
 
 #### A note on specifying locations
 
@@ -172,11 +172,11 @@ Actually, that's not all the trouble. Even once you got all that figured out, yo
 s3-dist-cp --src hdfs://ip-111-222-333-444.ec2.internal:8020/user/hadoop/990_long/merged --dest s3://my-bucket/destination
 ```
 
-### Shut down your cluster!
+### Step 6: Shut down your cluster!
 
 This cluster will run up a BIG bill if you do not shut it down, right now. Go to the EMR console and choose "terminate." If you enabled termination protection, you will have to disable it first.
 
-### Step 6: Create an Athena table or .csv files
+### Step 7: Create an Athena table or .csv files
 
 Athena is based on Apache Presto. It lets you treat a data file like a database, without actually running a database. For rarely used data, it's incredibly cheap, even when the data are really big. To set up an Athena table, go to the Athena console on AWS. Then run the following query:
 
