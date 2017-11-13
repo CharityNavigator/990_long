@@ -64,6 +64,18 @@ Hit "next," and then put in the computers you chose. If you're running in produc
 
 Hit "next" again. Choose a name that will help you identify this cluster six months from now. Hit "next" one more time. Do NOT proceed without an EC2 key pair: choose one or create one. You are now ready to create your cluster. It will take about 15 minutes for it to finish bootstrapping.
 
+### Step 3a: Modify security group for your EMR cluster
+
+By default, your EMR master node can't pull the 990 data processing code from GitHub, which you need it to be able to do. You also can't log into it directly, which you'll also need to be able to do. So we're going to explicitly authorize GitHub to send data to EMR master nodes by default, and we're going to open up the cluster for SSH access. You only need to do this once. If you run this code again, you don't need to mess with it.
+
+* Go to the EC2 console.
+* Click on "Security Groups."
+* Find the security group called `ElasticMapReduce-master.` Click on it.
+* Click "Add rule." Where it says "Custom TCP rule," click the drop down and choose "SSH." Where it says "Custom," click the drop down and choose "Anywhere."
+* Create additional rules allowing inbound traffic for ports 443, 9418, and 80 from 192.30.252.0/22 (Github).
+
+Again, if you've done this before, you don't need to do it again.
+
 ### Step 4: Walk through the steps
 
 Find your master node's public IP address by clicking on your cluster, choosing the hardware tab, and clicking on its ID. SSH into it as user `hadoop` using your EC2 private key (`.pem` file). At the command line, that's
