@@ -23,10 +23,11 @@ LOGGER = log4jLogger.LogManager.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--prod", action="store_true", help="If not set, will only retrive 1000 filings per year")
+parser.add_argument("--test-count", type=int, action="store", help="If running in test mode, number of 990s to pull per year.", default = 1000)
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default = "990_long/paths")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--earliest-year", type=int, action="store", default=2011, help="First year to include in data.")
-args = parser.parse_args()
+args = parser.parse_known_args()
 
 production = args.prod
 
@@ -57,7 +58,7 @@ def retrieveForYear(year):
     if production:
         return filings
     else:
-        sample = filings[0:1000]
+        sample = filings[0:args.test_count]
         return sample
 
 def getYears(first_year):

@@ -24,7 +24,7 @@ parser.add_argument("--output", action="store", help="Path in which to store res
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for XML parsing.", default=500)
 parser.add_argument("--timeout", type=int, action="store", help="Number of seconds to spend parsing a single 990 eFile before it is skipped.", default=3)
-args = parser.parse_args()
+args = parser.parse_known_args()
 
 if args.timestamp:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
