@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", action="store", help="Path to Parquet file containing xpath-value pairs.", default = "990_long/parsed")
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default = "s3a://cn-validatathon")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
-args = parser.parse_known_args()
+args = parser.parse_known_args()[0]
 
 if args.timestamp:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')

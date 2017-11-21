@@ -27,7 +27,7 @@ parser.add_argument("--test-count", type=int, action="store", help="If running i
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default = "990_long/paths")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--earliest-year", type=int, action="store", default=2011, help="First year to include in data.")
-args = parser.parse_known_args()
+args = parser.parse_known_args()[0]
 
 production = args.prod
 
