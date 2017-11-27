@@ -21,7 +21,7 @@ LOGGER = log4jLogger.LogManager.getLogger(__name__)
 parser = argparse.ArgumentParser()
 parser.add_argument("--paths", action="store", help="Path to Parquet file containing paths to 990 filings.")
 parser.add_argument("--data", action="store", help="Path to Parquet file containing data to be diffed.")
-parser.add_argument("--colname", action="store", help="Column name for object ID in data table.", default = "ObjectId")
+parser.add_argument("--colname", action="store", help="Column name for object ID in data table.", default = "object_id")
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="990_long/parsed")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for XML parsing.", default=500)
@@ -37,8 +37,8 @@ outputPath = args.output + suffix
 
 paths = spark.read.parquet(args.paths)
 data  = spark.read.parquet(args.data) \
-           .select(col(args.colname).alias("ObjectId"))
+           .select(col(args.colname).alias("object_id"))
 
-missing = paths.join(data, "ObjectId", "leftanti")
+missing = paths.join(data, "object_id", "leftanti")
 
 missing.write.parquet(outputPath)
