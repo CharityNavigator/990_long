@@ -84,6 +84,15 @@ years = getYears(args.earliest_year)
 sc.parallelize(years) \
         .flatMap(lambda y : retrieveForYear(y)) \
         .map(lambda r : Row(**r)) \
+        .select(col("EIN").alias("ein"),
+                col("TaxPeriod").alias("period"),
+                col("DLN").alias("dln"),
+                col("FormType").alias("form"),
+                col("URL").alias("url"),
+                col("OrganizationName").alias("org_name"),
+                col("SubmittedOn").alias("submitted_on"),
+                col("ObjectId").alias("object_id"),
+                col("LastUpdated").alias("updated")) \
         .toDF() \
         .write.parquet(outputPath)
 

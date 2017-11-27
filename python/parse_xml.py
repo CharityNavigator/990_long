@@ -96,13 +96,13 @@ udfParse = udf(parse, schema)
 spark.read.parquet(args.input) \
         .repartition(args.partitions) \
         .withColumn("elementArr", udfParse("XML")) \
-        .select(col("DLN").alias("dln"), 
-                col("EIN").alias("ein"), 
-                col("ObjectId").alias("object_id"),
-                col("OrganizationName").alias("org_name"),
-                col("SubmittedOn").alias("submitted_on"),
-                col("TaxPeriod").alias("period"),
-                col("URL").alias("url"),
+        .select(col("dln"),
+                col("ein"),
+                col("object_id"),
+                col("org_name"),
+                col("submitted_on"),
+                col("period"),
+                col("url"),
                 explode(col("elementArr")).alias("element")) \
         .withColumn("version", col("element.version")) \
         .withColumn("xpath", col("element.xpath")) \
