@@ -1,6 +1,7 @@
 import argparse
 import boto
 from pyspark.sql import SparkSession
+from pyspark.sql.types import Row
 from pyspark.sql.types import *
 from pyspark.sql.functions import *
 import json
