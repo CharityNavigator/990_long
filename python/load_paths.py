@@ -1,10 +1,8 @@
 import argparse
 import boto
 from pyspark.sql import SparkSession
-from pyspark.sql.types import Row
-from pyspark.sql.types import StringType
-from pyspark.sql.functions import udf
-from lxml import etree
+from pyspark.sql.types import *
+from pyspark.sql.functions import *
 import json
 import requests
 import re
