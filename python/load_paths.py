@@ -84,6 +84,7 @@ years = getYears(args.earliest_year)
 sc.parallelize(years) \
         .flatMap(lambda y : retrieveForYear(y)) \
         .map(lambda r : Row(**r)) \
+        .toDF() \
         .select(col("EIN").alias("ein"),
                 col("TaxPeriod").alias("period"),
                 col("DLN").alias("dln"),
@@ -93,7 +94,6 @@ sc.parallelize(years) \
                 col("SubmittedOn").alias("submitted_on"),
                 col("ObjectId").alias("object_id"),
                 col("LastUpdated").alias("updated")) \
-        .toDF() \
         .write.parquet(outputPath)
 
 print "***Process complete."
