@@ -23,6 +23,7 @@ parser.add_argument("--input", action="store", help="Path to Parquet file contai
 parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="990_long/xml")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for data retrieval.", default=500)
+parser.add_argument("--format", action="store", help="Input format (parquet or csv).", default="parquet")
 
 args = parser.parse_known_args()[0]
 
@@ -69,8 +70,14 @@ def getXmlForPartition(partition):
 
 udfGetXml = udf(getXml, StringType())
 
-spark.read.parquet(args.input) \
-        .rdd \
+if args.format == "parquet":
+    input = spark.read.parquet(args.input) 
+elif args.format == "csv":
+    input = spark.read.csv(args.input) 
+else:
+    raise Exception("Unexpected input format \"%s\"" % args.input)
+
+input.rdd \
         .repartition(args.partitions) \
         .mapPartitions(lambda p: getXmlForPartition(p)) \
         .map(lambda r: Row(**r)) \
