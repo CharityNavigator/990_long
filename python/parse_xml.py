@@ -24,6 +24,7 @@ parser.add_argument("--output", action="store", help="Path in which to store res
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for XML parsing.", default=500)
 parser.add_argument("--timeout", type=int, action="store", help="Number of seconds to spend parsing a single 990 eFile before it is skipped.", default=3)
+parser.add_argument("--no-timeout", action="store_true", help="If true, don't time out, even if load is taking a long time.")
 args = parser.parse_known_args()[0]
 
 if args.timestamp:
@@ -71,14 +72,17 @@ def handler(signum, frame):
     raise Exception()
 
 def parse(raw):
-    signal.signal(signal.SIGALRM, handler)
+    if not args.no_timeout:
+        signal.signal(signal.SIGALRM, handler)
     try:
-        signal.alarm(args.timeout)
+        if not args.no_timeout:
+            signal.alarm(args.timeout)
         ascii = raw.encode("ascii", "ignore")
         root = etree.XML(ascii)
         version = root.attrib["returnVersion"]
         ret = extractElements(root, version)
-        signal.alarm(0)
+        if not args.no_timeout:
+            signal.alarm(0)
         return ret
     except Exception:
         return []
@@ -93,7 +97,7 @@ schema = ArrayType(
 
 udfParse = udf(parse, schema)
 
-spark.read.parquet(args.input) \
+spark.read.parquet(*args.input) \
         .repartition(args.partitions) \
         .withColumn("elementArr", udfParse("XML")) \
         .select(col("dln"),
