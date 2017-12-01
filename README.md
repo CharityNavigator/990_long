@@ -126,8 +126,8 @@ This step used to be a bit finnicky, but I think it should be working pretty wel
 Now we do the heavy lifting. We need to crawl through all of those XML documents and turn them into key-value pairs. This process definitely gets bogged down, for reasons I have not yet had a chance to diagnose. It does eventually finish if you wait long enough. Time is money on EMR, though, so I added a `--timeout` argument. By default, if it takes more than three seconds to parse a 990, the script gives up. Most 990s process within a tiny fraction of a second. Without the timeout, the run can take many hours, but with it, it's pretty quick. The commands:
 
 ```
-nohup sh -c "spark-submit python/parse_xml.py" > parse_xml.out 2> load_xml.err &
-tail -f load_xml.err
+nohup sh -c "spark-submit python/parse_xml.py" > parse_xml.out 2> parse_xml.err &
+tail -f parse_xml.err
 ```
 
 #### Merging the key-value pairs with the concordance
