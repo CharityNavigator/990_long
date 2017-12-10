@@ -18,12 +18,21 @@ These instructions assume some familiarity with Amazon Web Services. They also a
 
 You will need to store your output somewhere. In parquet format, the master file is over 56gb. **In .csv format, the output is over 250gb.** Be aware of the associated costs before you start. Your bucket should be accessible to your EMR instance. There is a test mode that produces a vastly smaller version of the output.
 
-### Step 2: Choose your EMR cluster
+### Step 2: Create a security group
+
+* Go to the EC2 console.
+* Click on "Security Groups."
+* Click "Create security group." Choose a name you'll remember.
+* Click "Add rule." Where it says "Custom TCP rule," click the drop down and choose "SSH." Where it says "Custom," click the drop down and choose "Anywhere."
+* Create additional rules allowing inbound traffic for ports 443, 9418, and 80 from 192.30.252.0/22 (Github).
+* Save the changes.
+
+### Step 3: Choose your EMR cluster
 
 I assume that you will using your cluster exclusively for processing these data. For that reason, we can optimize the cluster for single-purpose use by turning on the EMR-specific `maximizeResourceAllocation` flag. This configures Spark to give as much resources (RAM and cores) to each worker as possible. This also means that your cluster will become unstable if you try to do anything else at the same time--including use `pyspark`. If you want to examine the output of a step while running the next step, you should store your output directly on S3 rather than on local storage.
  
 As far as I can tell, the master node doesn't get used for much at any point in this process. However, I'm not a Spark expert, so I hedged my bets by not making the master node too small. If you have any insight into the question of head node size, please provide create a ticket so we can discuss.
- 
+
 #### If you are doing a test run (7000 filings)
 
 For test purposes, a small cluster is fine. I found that two `m4.xlarge` workers plus an `m4.xlarge` master node was enough power to run and examine the test data in interactive time. At current on-demand rates, this puts you in the vicinity of $1 per hour. As I mentioned above, you may be able to get away with a smaller head node.
@@ -41,16 +50,59 @@ On this cluster, the approximate running time for each step was as follows:
   * `parse_xml.py`: 14 minutes to parse all of the XML data into a key-value representation, skipping any that take more than three seconds to process. (See note 2)
   * `merge_xml.py`: 9 minutes to merge concordance data, including variable names and metadata, into the key-value mapping.
   * `split_csv.py`: 15 minutes to split the merged data into .csv files, if desired.
- 
-In theory, therefore, this entire thing could be done for less than $10. In practice, often times pieces fail and you have to go in there and re-run them. Add in periods of inattention, and the whole thing might take you a few hours of operating time.
 
-Note 1: This process is much slower than you'd expect for the volume of data. The reason is that the IRS put all two million XML files into a single directory. This causes the `aws s3 ls` and `aws s3 sync` commands to become uselessly slow. We thus have to go in and request each one by name. 
+In theory, if everything runs without a hitch, the entire thing can be done for less than $10. In practice, often times pieces fail and you have to go in there and re-run them--sometimes interactively.
 
-Note 2: Most are finished in a tiny fraction of a second, so I assume that the slow ones are the result of hiccups or errors. That said, I have not yet had a chance to go through and look at which ones were skipped, which can be accomplished by finding the `object_id` values in the index that fail to appear in the finished product. Hopefully, hitting these a second time, with fewer files per node, will prove sufficient to handle them all. If there is a bug that's causing them to run slowly, however, a tweak in the code may be required.
+Note 1: This process is much slower than you'd expect for the volume of data. The reason is that we are dealing with two million XML files, all sitting in a single folder. This greatly degrades S3 performance.
 
-### Step 3: Turn on your EMR cluster
+Note 2: The slow ones are enormous--thousands of times longer than a typical 990. You can get these manually by re-running `parse_xml.py` with different arguments later.
 
-Whatever size cluster you're running, you'll now need to turn it on. You'll want to specify the `MaximizeResourceAllocation` option, which must be specified in advance. This saves you a lot of math (and typing) by figuring out how much memory and how many cores can go to each executor, given the cluster you chose. (Quick refresher: your data will be broken into chunks, called "partitions." Processing a partition is a task. Each task gets performed by an executor. You have a certain number of executors per node. The nodes are what you're choosing and buying.) 
+### Step 4 the easy way: Run everything automatically
+
+#### Copy the run script to S3
+
+Download [`run_all.sh`](https://github.com/CharityNavigator/990_long/blob/master/run_all.sh) and upload it to an S3 bucket under your control.
+
+#### Set up your cluster and run the script
+
+##### Software and steps
+
+* Go to the EMR console. 
+* Click "create cluster", then click on the "go to advanced options."
+* Under software configuration, use the latest version of EMR. Leave the defaults selected, and check off Spark and Ganglia as well.
+* Under "edit software configuration, copy and paste  the following:
+
+```
+[{"classification":"spark-defaults","properties":{"spark.shuffle.io.maxRetries":"9","maximizeResourceAllocation":"true"}}]`
+```
+
+* Under "steps," choose "Custom jar" and click configure. For the jar, put `s3://us-east-1.elasticmapreduce/libs/script-runner/script-runner.jar`. (Change `us-east-1` to your region.) Choose "terminate on failure." For production mode, supply the following argument:
+
+```
+s3://my-bucket-name/path-to-script/run_all.sh s3://my-bucket-name/output-path --prod
+```
+
+For test mode, omit the `--prod` and replace it with `--partitions 25`. Obviously, correct the S3 paths as desired. 
+
+##### Hardware
+
+Fill in the hardware selections you made above.
+
+##### General cluster settings
+
+Choose logging and debugging, and disable termination protection.
+
+##### Security
+
+Under "additional security groups," add the group you created to both "master" and "core and task."
+
+You are now ready to launch. You can monitor progress from the EMR console, and view changes to your logs in real time. When you're done, all the data will be sitting in S3.
+
+### Step 4 the hard way: Run everything by hand
+
+If you can possibly avoid it, I recommend not doing this. It's easy to forget the shut off the server, and you have to track all your logs yourself. It's a pain. But if something goes wrong, it can make sense to run things by hand, interactively, at the terminal. This can save time when debugging a problem, since starting an EMR cluster takes 15 minutes. This was also the only way to do it until recently. 
+
+Whatever size cluster you're running, you'll  need to turn it on. You'll want to specify the `MaximizeResourceAllocation` option, which must be specified in advance. This saves you a lot of math (and typing) by figuring out how much memory and how many cores can go to each executor, given the cluster you chose. (Quick refresher: your data will be broken into chunks, called "partitions." Processing a partition is a task. Each task gets performed by an executor. You have a certain number of executors per node. The nodes are what you're choosing and buying.) 
 
 While we're at it, we'll set a second parameter, `spark.shuffle.io.maxRetries`. Your spot instances will get shut down whenever someone shows up who's willing to pay a higher price. This includes everyone running on-demand, so expect it to happen. When that happens, whatever was running on it will fail. By default, when that happens three times to any one task, the whole run is killed, and you have to start the step you're running over. So we crank up the number of retries we're allowed. You can set this one on the fly, but since we're already here, let's add it now.
 
@@ -64,19 +116,7 @@ Hit "next," and then put in the computers you chose. If you're running in produc
 
 Hit "next" again. Choose a name that will help you identify this cluster six months from now. Hit "next" one more time. Do NOT proceed without an EC2 key pair: choose one or create one. You are now ready to create your cluster. It will take about 15 minutes for it to finish bootstrapping.
 
-### Step 3a: Modify security group for your EMR cluster
-
-By default, your EMR master node can't pull the 990 data processing code from GitHub, which you need it to be able to do. You also can't log into it directly, which you'll also need to be able to do. So we're going to explicitly authorize GitHub to send data to EMR master nodes by default, and we're going to open up the cluster for SSH access. You only need to do this once. If you run this code again, you don't need to mess with it.
-
-* Go to the EC2 console.
-* Click on "Security Groups."
-* Find the security group called `ElasticMapReduce-master.` Click on it.
-* Click "Add rule." Where it says "Custom TCP rule," click the drop down and choose "SSH." Where it says "Custom," click the drop down and choose "Anywhere."
-* Create additional rules allowing inbound traffic for ports 443, 9418, and 80 from 192.30.252.0/22 (Github).
-
-Again, if you've done this before, you don't need to do it again.
-
-### Step 4: Walk through the steps
+#### Walk through the steps
 
 Find your master node's public IP address by clicking on your cluster, choosing the hardware tab, and clicking on its ID. SSH into it as user `hadoop` using your EC2 private key (`.pem` file). At the command line, that's
 
@@ -97,7 +137,7 @@ cd 990_long
 
 Now you're ready to start running the code. There are shell scripts sitting in the `990_long` directory, but I wouldn't bother using them. The steps can fail for one reason or another, and you'll just wind up trying to figure out what happened. (That's also why I run them as separate steps instead of all at once--so that when things fail, you're not starting over.)
 
-#### Loading indices into a local parquet file
+##### Loading indices into a local parquet file
 
 The first step is to pull the 990 indices that are hosted in AWS and load them into a local parquet file, ready to be used in subsequent steps. We'll run it in the background, using `nohup` so that it keeps running even if we get disconnected. Then we'll monitor the logs using `tail -f` to make sure it doesn't blow up. We'll take the same approach for all other steps.
 
@@ -110,7 +150,7 @@ You can exit `tail` by pressing `ctrl+c`.
 
 If you include `--prod`, it will pull index info for all the 990s. If you don't it will only pull the first thousand for each year. (Each subsequent step uses the output of the one before, so you only need to specify this at the outset.) There are other options as well; you can specify output path, first year, and whether or not to append a timestamp to the output path location. If you don't specify anything, the data will go into `990_long/paths`, which also happens to be the default input to the next step. (Convenient!)
 
-#### Retrieving raw XML
+##### Retrieving raw XML
 
 Now that we know what 990s we want, we have to get them. As mentioned above, we retrieve them one at a time from S3 using [boto](http://boto.cloudhackers.com/en/latest/). As with the preceding step, we'll run it in the background using `nohup` and then monitor the progress with `tail`. Assuming you used the default output location for `load_paths.py` and you're happy to do the same for `load_xml.py`:
 
@@ -121,7 +161,7 @@ tail -f load_xml.err
 
 This step used to be a bit finnicky, but I think it should be working pretty well now. If you're not running in production mode, you'll probably want to drop the number of partitions considerably by adding, e.g., `--partitions 20` to the `spark-submit` command. Other than that, if you run into any trouble, please [create a ticket](https://github.com/CharityNavigator/990_long/issues/new), and attach your `load_xml.err` and `load_xml.out` along with a description of your EMR cluster and the preceding steps.
 
-#### Parsing the raw XML
+##### Parsing the raw XML
 
 Now we do the heavy lifting. We need to crawl through all of those XML documents and turn them into key-value pairs. This process definitely gets bogged down, for reasons I have not yet had a chance to diagnose. It does eventually finish if you wait long enough. Time is money on EMR, though, so I added a `--timeout` argument. By default, if it takes more than three seconds to parse a 990, the script gives up. Most 990s process within a tiny fraction of a second. Without the timeout, the run can take many hours, but with it, it's pretty quick. The commands:
 
@@ -130,7 +170,7 @@ nohup sh -c "spark-submit python/parse_xml.py" > parse_xml.out 2> parse_xml.err 
 tail -f parse_xml.err
 ```
 
-#### Merging the key-value pairs with the concordance
+##### Merging the key-value pairs with the concordance
 
 Everything we've done so far can be done without the concordance. Now it's time to get the variable-level insights that can only be identified by human review. This step is not as resource-intensive as the parsing step, because it's the kind of thing for which the Hadoop universe is optimized. I haven't had any trouble with this step. Note that you will need to specify where you want this output to go, because the default location is particular to the reason for which this repo was created: the IRS Form 990 Validatathon event, which took place at the Aspen Institute on Nov 1-2, 2017. 
 
@@ -141,7 +181,7 @@ tail -f merge_xml.err
 
 As far as what to put in place of `my/destination`, see the note on specifying locations below.
 
-#### (optional) create .csv files
+##### (optional) create .csv files
 
 Parquet files are nice and all, but you probably want to look at the data without using Spark. There are two straightforward options: Amazon Athena and .csv files. Creating .csv files is as simple as running one more script:
 
@@ -168,7 +208,7 @@ nohup sh -c "spark-submit python/load_paths.py --output \"foo/bar\"" > load_path
 
 This does **not** store your data into local storage on the master node; it puts it into HDFS, which is distributed over your master and core nodes, and which is accessed using a separate set of commands like `hadoop fs` and `s3-dist-cp`. It is more local than S3, and less local than your master machine's hard drive.
 
-### Step 5: Transfer the data to S3 (if needed)
+#### Transfer the data to S3 (if needed)
 
 If you put the merged data directly onto S3, you may be satisfied at this point. If, however, you want to move any data from HDFS to S3, you'll need to jump through one more hoop. You'll be using a command called `s3-dist-cp`, but the documentation leaves much to be desired. The syntax is simple enough:
 
@@ -184,13 +224,15 @@ Actually, that's not all the trouble. Even once you got all that figured out, yo
 s3-dist-cp --src hdfs://ip-111-222-333-444.ec2.internal:8020/user/hadoop/990_long/merged --dest s3://my-bucket/destination
 ```
 
-### Step 6: Shut down your cluster!
+#### Shut down your cluster!
 
 This cluster will run up a BIG bill if you do not shut it down, right now. Go to the EMR console and choose "terminate." If you enabled termination protection, you will have to disable it first.
 
-### Step 7: Create an Athena table or .csv files
+### Step 5: Create an Athena table or .csv files
 
-Athena is based on Apache Presto. It lets you treat a data file like a database, without actually running a database. For rarely used data, it's incredibly cheap, even when the data are really big. To set up an Athena table, go to the Athena console on AWS. Then run the following query:
+Athena is based on Apache Presto. It lets you treat a data file like a database, without actually running a database. For rarely used data, it's incredibly cheap, even when the data are really big. To set up an Athena table, go to the Athena console on AWS. Then run the following query
+
+**IMPORTANT (12/9/2017): THIS QUERY IS OUT OF DATE! The column specifications have changed. I will update it shortly. You can also figure it out just by looking at the column specifications in the code or the output.**
 
 ```
 CREATE EXTERNAL TABLE `my_table_name`(
