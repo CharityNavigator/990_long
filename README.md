@@ -6,6 +6,10 @@ The output fdata is a huge list of key-value pairs (KVPs), plus metadata. These 
 
 Again, though, these data are riddled with mistakes. If you want to clean it up, please consider contributing to the [concordance](https://github.com/Nonprofit-Open-Data-Collective/irs-efile-master-concordance-file).
 
+## Want to DIY?
+
+Since this library was written, more and more resources have become available for analyzing the IRS e-file dataset. If you want to build your own 990 analysis tool, the author of this library has written [a how-to article on Medium](https://medium.com/@open990/the-irs-990-e-file-dataset-getting-to-the-chocolatey-center-of-data-deliciousness-90f66097a600).
+
 # Running the code
 
 This repository is designed to be used with Amazon Web Services. The code runs on Spark over Elastic Map Reduce (EMR), producing assets that are stored in Amazon Simple Storage Service (S3). If you decide to use the code in another environment, please create documentation and share it!
