@@ -97,7 +97,7 @@ schema = ArrayType(
 
 udfParse = udf(parse, schema)
 
-spark.read.parquet(*args.input) \
+spark.read.parquet(args.input) \
         .repartition(args.partitions) \
         .withColumn("elementArr", udfParse("XML")) \
         .select(col("dln"),

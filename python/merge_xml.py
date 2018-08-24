@@ -42,7 +42,7 @@ cc = spark.read.csv("concordance.csv", header=True) \
                 col("location_code").alias("location"))
 
 standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
-df = spark.read.parquet(*args.input) \
+df = spark.read.parquet(args.input) \
         .repartition(args.partitions) \
         .withColumn("xpath", standardize(col("xpath"))) \
 
