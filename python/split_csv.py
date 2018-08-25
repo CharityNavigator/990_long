@@ -18,7 +18,7 @@ LOGGER = log4jLogger.LogManager.getLogger(__name__)
 ### Handle command line arguments
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", action="store", help="Path to Parquet file containing xpath-value pairs.", default = "990_long/parsed")
+parser.add_argument("--input", action="store", help="Path to Parquet file containing merged xml.", default = "")
 parser.add_argument("--output", action="store", help="Path in which to store CSVs. Can be local or S3. Local recommended.", default = "990_long/csv")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 args = parser.parse_known_args()[0]

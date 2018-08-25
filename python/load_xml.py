@@ -71,9 +71,9 @@ def getXmlForPartition(partition):
 udfGetXml = udf(getXml, StringType())
 
 if args.format == "parquet":
-    input = spark.read.parquet(*args.input) 
+    input = spark.read.parquet(args.input)
 elif args.format == "csv":
-    input = spark.read.csv(*args.input, header=True) 
+    input = spark.read.csv(args.input, header=True)
 else:
     raise Exception("Unexpected input format \"%s\"" % args.input)
 

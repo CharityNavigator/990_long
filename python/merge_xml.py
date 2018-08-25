@@ -18,8 +18,8 @@ LOGGER = log4jLogger.LogManager.getLogger(__name__)
 ### Handle command line arguments
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", action="append", help="Path to Parquet file containing xpath-value pairs.")
-parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.")
+parser.add_argument("--input", action="store", help="Path to Parquet file containing xpath-value pairs.", default="990_long/parsed")
+parser.add_argument("--output", action="store", help="Path in which to store result. Can be local or S3.", default="")
 parser.add_argument("--timestamp", action="store_true", help="If true, append the timestamp to the output path.")
 parser.add_argument("--partitions", type=int, action="store", help="Number of partitions to use for the join.", default=400)
 args = parser.parse_known_args()[0]
@@ -42,7 +42,7 @@ cc = spark.read.csv("concordance.csv", header=True) \
                 col("location_code").alias("location"))
 
 standardize = udf(lambda xpath : "/Return/" + xpath.strip(), StringType())
-df = spark.read.parquet(*args.input) \
+df = spark.read.parquet(args.input) \
         .repartition(args.partitions) \
         .withColumn("xpath", standardize(col("xpath"))) \
 
