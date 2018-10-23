@@ -1,3 +1,7 @@
+# Pregenerated results available
+
+You can access the output of `990_long` at the [Open990 Community Data Page](https://www.open990.com/data/).
+
 # `990_long`
 
 Generates a long-form version of every field in the IRS 990 eFile dataset based on the Nonprofit Open Data Collective (NOPDC) "Datathon" concordance. The concordance is the work of many separate groups that came together to make sense of the IRS Form 990 eFile dataset. **The concordance is very much still a draft**; at this time, the output of `990_long` should be treated as preview data. You can view the concordance at its own [Github repo](https://github.com/Nonprofit-Open-Data-Collective/irs-efile-master-concordance-file).
